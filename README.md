@@ -1,20 +1,21 @@
 # Samas Sprint (HSC Bangla 2nd Paper)
 
 Simple static quiz app for practicing:
-- সমাস নির্ণয়
-- ব্যাসবাক্য
+- Samas category detection
+- Byasabakya writing
 
 ## Language Setup
 - Navigation/UI labels: English
 - Practice content: Bengali
 
 ## Practice Tracks
-- `Full Pair (সমাস + ব্যাসবাক্য)`
-- `Only ব্যাসবাক্য`
-- `Only সমস্তপদ`
+- `Full Pair (Samas + Byasabakya)`
+- `Only Byasabakya`
+- `Only Samas Category`
 
 ## Responsive Behavior
 - Mobile-first layout (small screens are default)
+- Quiz appears at the top (quiz-first layout)
 - Tablet and desktop enhancements via media queries
 
 ## Files
@@ -22,7 +23,7 @@ Simple static quiz app for practicing:
 - `styles.css` - visual design + responsive layout
 - `app.js` - quiz logic (`Classic`, `Speed`, `Flash`)
 - `data/questions.js` - editable question bank
-- `1.jpeg` to `6.jpeg` - source sheets (shown in app)
+- `1.jpeg` to `6.jpeg` - source reference images (not shown in home UI)
 
 ## Run Locally
 Any static server is enough.
@@ -31,6 +32,7 @@ Example:
 ```powershell
 python -m http.server 5500
 ```
+
 Then open:
 `http://localhost:5500`
 

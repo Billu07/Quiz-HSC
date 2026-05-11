@@ -13,6 +13,7 @@ const practiceTrack = document.getElementById("practiceTrack");
 const startBtn = document.getElementById("startBtn");
 const modeCards = Array.from(document.querySelectorAll("[data-pick-mode]"));
 
+const quizStage = document.getElementById("quizStage");
 const quizCard = document.getElementById("quizCard");
 const qIndex = document.getElementById("qIndex");
 const qModeTag = document.getElementById("qModeTag");
@@ -31,7 +32,7 @@ const flashActions = document.getElementById("flashActions");
 const knewBtn = document.getElementById("knewBtn");
 const reviewBtn = document.getElementById("reviewBtn");
 
-const STORAGE_KEY = "samas_sprint_progress_v2";
+const STORAGE_KEY = "samas_sprint_progress_v3";
 
 const MODE_LABELS = {
   classic: "Classic Drill",
@@ -42,7 +43,7 @@ const MODE_LABELS = {
 const TRACK_LABELS = {
   full: "Full Pair",
   byas_only: "Only ব্যাসবাক্য",
-  somosto_only: "Only সমস্তপদ"
+  samas_only: "Only সমাস নির্ণয়"
 };
 
 let mode = "classic";
@@ -61,10 +62,10 @@ function init() {
   bankCount.textContent = String(questionBank.length);
 
   MAIN_CATEGORIES.forEach((category) => {
-    const opt = document.createElement("option");
-    opt.value = category;
-    opt.textContent = category;
-    categoryFilter.appendChild(opt);
+    const option = document.createElement("option");
+    option.value = category;
+    option.textContent = category;
+    categoryFilter.appendChild(option);
   });
 
   modeCards.forEach((card) => {
@@ -109,11 +110,11 @@ function startSession() {
   if (filtered.length === 0) {
     setFeedback("এই ক্যাটাগরিতে প্রশ্ন নেই। অন্য ক্যাটাগরি বাছাই করো।", "bad");
     feedback.classList.remove("hidden");
-    quizCard.classList.remove("hidden");
     return;
   }
 
   queue = shuffle([...filtered]).slice(0, Math.min(pickedCount, filtered.length));
+  answerForm.classList.remove("hidden");
   quizCard.classList.remove("hidden");
 
   if (mode === "speed") {
@@ -131,6 +132,7 @@ function startSession() {
     timerEl.textContent = "--";
   }
 
+  quizStage.scrollIntoView({ behavior: "smooth", block: "start" });
   renderQuestion();
 }
 
@@ -143,6 +145,7 @@ function renderQuestion() {
   activeQuestion = queue[currentIndex];
   qIndex.textContent = `প্রশ্ন ${currentIndex + 1} / ${queue.length}`;
   qModeTag.textContent = `${MODE_LABELS[mode]} | ${TRACK_LABELS[track]}`;
+  qPrompt.textContent = `সমস্তপদ: ${activeQuestion.word}`;
 
   feedback.classList.add("hidden");
   feedback.classList.remove("ok", "bad");
@@ -152,63 +155,53 @@ function renderQuestion() {
   clearChoices();
 
   if (mode === "flash") {
-    renderQuestionPrompt();
+    answerForm.classList.remove("hidden");
     choiceWrap.classList.add("hidden");
     textAnswerWrap.classList.add("hidden");
     checkBtn.classList.add("hidden");
     revealBtn.classList.remove("hidden");
-    revealBtn.textContent = "Reveal Answer";
+    qInstruction.textContent = "প্রথমে উত্তর ভাবো, তারপর Reveal Answer চাপো";
     return;
   }
 
-  checkBtn.classList.remove("hidden");
-  revealBtn.classList.remove("hidden");
-  renderQuestionPrompt();
+  answerForm.classList.remove("hidden");
   renderTrackInputs();
 }
 
-function renderQuestionPrompt() {
-  if (track === "somosto_only") {
-    qPrompt.textContent = `ব্যাসবাক্য: ${activeQuestion.byasabakya}`;
-    qInstruction.textContent = "উপযুক্ত সমস্তপদ লিখো";
-    return;
-  }
-
-  qPrompt.textContent = `সমস্তপদ: ${activeQuestion.word}`;
-  if (track === "byas_only") {
-    qInstruction.textContent = "সঠিক ব্যাসবাক্য লিখো";
-    return;
-  }
-
-  qInstruction.textContent = "সমাস নির্ণয় করো এবং ব্যাসবাক্য লিখো";
-}
-
 function renderTrackInputs() {
+  checkBtn.classList.remove("hidden");
+  revealBtn.classList.remove("hidden");
+
   if (track === "full") {
+    qInstruction.textContent = "সমাস নির্ণয় করো এবং ব্যাসবাক্য লিখো";
     choiceWrap.classList.remove("hidden");
     textAnswerWrap.classList.remove("hidden");
     textAnswerLabel.textContent = "ব্যাসবাক্য লিখো";
     textAnswerInput.placeholder = "উদাহরণ: রাজার পুত্র";
+    checkBtn.textContent = "Check";
     renderChoices();
     return;
   }
 
-  choiceWrap.classList.add("hidden");
-  textAnswerWrap.classList.remove("hidden");
-
   if (track === "byas_only") {
+    qInstruction.textContent = "সঠিক ব্যাসবাক্য লিখো";
+    choiceWrap.classList.add("hidden");
+    textAnswerWrap.classList.remove("hidden");
     textAnswerLabel.textContent = "ব্যাসবাক্য লিখো";
     textAnswerInput.placeholder = "উদাহরণ: রাজার পুত্র";
+    checkBtn.textContent = "Check";
     return;
   }
 
-  textAnswerLabel.textContent = "সমস্তপদ লিখো";
-  textAnswerInput.placeholder = "উদাহরণ: রাজপুত্র";
+  qInstruction.textContent = "সঠিক সমাসের নাম নির্ণয় করো";
+  choiceWrap.classList.remove("hidden");
+  textAnswerWrap.classList.add("hidden");
+  checkBtn.textContent = "Check";
+  renderChoices();
 }
 
 function renderChoices() {
   choiceWrap.innerHTML = "";
-
   MAIN_CATEGORIES.forEach((category) => {
     const label = document.createElement("label");
     label.className = "choice";
@@ -232,7 +225,6 @@ function clearChoices() {
 
 function onSubmitAnswer(event) {
   event.preventDefault();
-
   if (!activeQuestion) {
     return;
   }
@@ -247,12 +239,12 @@ function onSubmitAnswer(event) {
     return;
   }
 
-  checkSomostoOnly();
+  checkSamasOnly();
 }
 
 function checkFullTrack() {
-  const selected = getCheckedCategory();
-  if (!selected) {
+  const selectedCategory = getCheckedCategory();
+  if (!selectedCategory) {
     setFeedback("একটি সমাসের নাম নির্বাচন করো।", "bad");
     feedback.classList.remove("hidden");
     return;
@@ -265,21 +257,21 @@ function checkFullTrack() {
     return;
   }
 
-  const categoryCorrect = selected === activeQuestion.category;
+  const categoryCorrect = selectedCategory === activeQuestion.category;
   const byasCorrect = isByasCorrect(userByas, activeQuestion.byasabakya);
   const correct = categoryCorrect && byasCorrect;
 
   registerResult(correct);
 
-  const summary = [
+  const resultText = [
     `<p><strong>${correct ? "চমৎকার!" : "আরেকবার চেষ্টা করো"}</strong></p>`,
-    `<p><strong>সমাস:</strong> তোমার উত্তর ${selected} (${categoryCorrect ? "সঠিক" : "ভুল"})</p>`,
-    `<p><strong>ব্যাসবাক্য:</strong> তোমার উত্তর ${escapeHtml(userByas)} (${byasCorrect ? "সঠিক" : "ভুল"})</p>`,
+    `<p><strong>সমাস:</strong> ${selectedCategory} (${categoryCorrect ? "সঠিক" : "ভুল"})</p>`,
+    `<p><strong>ব্যাসবাক্য:</strong> ${escapeHtml(userByas)} (${byasCorrect ? "সঠিক" : "ভুল"})</p>`,
     `<p><strong>সঠিক সমাস:</strong> ${activeQuestion.category}</p>`,
     `<p><strong>রেফারেন্স ব্যাসবাক্য:</strong> ${activeQuestion.byasabakya}</p>`
   ].join("");
 
-  showResult(summary, correct);
+  showResult(resultText, correct);
 }
 
 function checkByasOnly() {
@@ -293,35 +285,35 @@ function checkByasOnly() {
   const correct = isByasCorrect(userByas, activeQuestion.byasabakya);
   registerResult(correct);
 
-  const summary = [
+  const resultText = [
     `<p><strong>${correct ? "সঠিক হয়েছে" : "ভুল হয়েছে"}</strong></p>`,
     `<p><strong>তোমার ব্যাসবাক্য:</strong> ${escapeHtml(userByas)}</p>`,
     `<p><strong>রেফারেন্স ব্যাসবাক্য:</strong> ${activeQuestion.byasabakya}</p>`,
-    `<p><strong>সমস্তপদ:</strong> ${activeQuestion.word}</p>`
+    `<p><strong>সমাস:</strong> ${activeQuestion.category}</p>`
   ].join("");
 
-  showResult(summary, correct);
+  showResult(resultText, correct);
 }
 
-function checkSomostoOnly() {
-  const userSomosto = textAnswerInput.value.trim();
-  if (!userSomosto) {
-    setFeedback("সমস্তপদ লিখে তারপর Check করো।", "bad");
+function checkSamasOnly() {
+  const selectedCategory = getCheckedCategory();
+  if (!selectedCategory) {
+    setFeedback("একটি সমাসের নাম নির্বাচন করো।", "bad");
     feedback.classList.remove("hidden");
     return;
   }
 
-  const correct = isSomostoCorrect(userSomosto, activeQuestion.word);
+  const correct = selectedCategory === activeQuestion.category;
   registerResult(correct);
 
-  const summary = [
+  const resultText = [
     `<p><strong>${correct ? "সঠিক হয়েছে" : "ভুল হয়েছে"}</strong></p>`,
-    `<p><strong>তোমার সমস্তপদ:</strong> ${escapeHtml(userSomosto)}</p>`,
-    `<p><strong>সঠিক সমস্তপদ:</strong> ${activeQuestion.word}</p>`,
+    `<p><strong>তোমার উত্তর:</strong> ${selectedCategory}</p>`,
+    `<p><strong>সঠিক সমাস:</strong> ${activeQuestion.category}</p>`,
     `<p><strong>ব্যাসবাক্য:</strong> ${activeQuestion.byasabakya}</p>`
   ].join("");
 
-  showResult(summary, correct);
+  showResult(resultText, correct);
 }
 
 function onRevealAnswer() {
@@ -329,25 +321,12 @@ function onRevealAnswer() {
     return;
   }
 
-  let content = "";
-  if (track === "full") {
-    content = [
-      `<p><strong>সঠিক সমাস:</strong> ${activeQuestion.category}</p>`,
-      `<p><strong>ব্যাসবাক্য:</strong> ${activeQuestion.byasabakya}</p>`
-    ].join("");
-  } else if (track === "byas_only") {
-    content = [
-      `<p><strong>ব্যাসবাক্য:</strong> ${activeQuestion.byasabakya}</p>`,
-      `<p><strong>সমস্তপদ:</strong> ${activeQuestion.word}</p>`
-    ].join("");
-  } else {
-    content = [
-      `<p><strong>সমস্তপদ:</strong> ${activeQuestion.word}</p>`,
-      `<p><strong>ব্যাসবাক্য:</strong> ${activeQuestion.byasabakya}</p>`
-    ].join("");
-  }
+  const resultText = [
+    `<p><strong>সঠিক সমাস:</strong> ${activeQuestion.category}</p>`,
+    `<p><strong>ব্যাসবাক্য:</strong> ${activeQuestion.byasabakya}</p>`
+  ].join("");
 
-  setFeedback(content, "ok");
+  setFeedback(resultText, "ok");
   feedback.classList.remove("hidden");
 
   if (mode === "flash") {
@@ -363,18 +342,15 @@ function onFlashMark(correct) {
   goNext();
 }
 
-function showResult(message, correct) {
+function showResult(message, isCorrect) {
   if (mode === "speed") {
-    const shortMessage = correct
-      ? "<p><strong>ঠিক</strong></p>"
-      : "<p><strong>ভুল</strong></p>";
-    setFeedback(shortMessage + message, correct ? "ok" : "bad");
+    setFeedback(message, isCorrect ? "ok" : "bad");
     feedback.classList.remove("hidden");
     window.setTimeout(goNext, 520);
     return;
   }
 
-  setFeedback(message, correct ? "ok" : "bad");
+  setFeedback(message, isCorrect ? "ok" : "bad");
   feedback.classList.remove("hidden");
   nextBtn.classList.remove("hidden");
 }
@@ -387,18 +363,14 @@ function goNext() {
 function finishSession(reason) {
   clearTimer();
   activeQuestion = null;
+  answerForm.classList.add("hidden");
+  flashActions.classList.add("hidden");
+  nextBtn.classList.add("hidden");
 
   qIndex.textContent = "Session Complete";
   qModeTag.textContent = `${MODE_LABELS[mode]} | ${TRACK_LABELS[track]}`;
   qPrompt.textContent = `চমৎকার! ${reason}`;
-  qInstruction.textContent = "নতুন সেট শুরু করতে উপরে Start Session চাপো";
-
-  choiceWrap.classList.add("hidden");
-  textAnswerWrap.classList.add("hidden");
-  checkBtn.classList.add("hidden");
-  revealBtn.classList.add("hidden");
-  flashActions.classList.add("hidden");
-  nextBtn.classList.add("hidden");
+  qInstruction.textContent = "নতুন সেটের জন্য Start Session চাপো";
 
   setFeedback(
     `<p><strong>এই সেশনের ফল:</strong> ${sessionScore.correct} / ${sessionScore.attempted}</p>`,
@@ -421,7 +393,6 @@ function registerResult(correct) {
     progress.correct += 1;
   }
   progress.bestStreak = Math.max(progress.bestStreak, progress.currentStreak);
-
   saveProgress(progress);
   updateProgressUi();
 }
@@ -431,10 +402,10 @@ function updateProgressUi() {
   attemptedEl.textContent = String(progress.attempted);
   bestStreakEl.textContent = String(progress.bestStreak);
 
-  const pct = progress.attempted > 0
+  const accuracy = progress.attempted > 0
     ? Math.round((progress.correct / progress.attempted) * 100)
     : 0;
-  accuracyEl.textContent = `${pct}%`;
+  accuracyEl.textContent = `${accuracy}%`;
 }
 
 function updateModeHeader() {
@@ -453,36 +424,29 @@ function isByasCorrect(userText, expectedText) {
   if (!user || !expected) {
     return false;
   }
-
   if (user === expected) {
     return true;
   }
-
   if (user.length >= 7 && (expected.includes(user) || user.includes(expected))) {
     return true;
   }
 
   const userTokens = user.split(" ").filter(Boolean);
   const expectedTokens = expected.split(" ").filter(Boolean);
-
   if (!userTokens.length || !expectedTokens.length) {
     return false;
   }
 
-  let hit = 0;
+  let common = 0;
   expectedTokens.forEach((token) => {
     if (userTokens.includes(token)) {
-      hit += 1;
+      common += 1;
     }
   });
 
-  const expectedCoverage = hit / expectedTokens.length;
-  const userCoverage = hit / userTokens.length;
+  const expectedCoverage = common / expectedTokens.length;
+  const userCoverage = common / userTokens.length;
   return expectedCoverage >= 0.75 && userCoverage >= 0.6;
-}
-
-function isSomostoCorrect(userText, expectedText) {
-  return normalizeWord(userText) === normalizeWord(expectedText);
 }
 
 function normalizeSentence(text) {
@@ -493,11 +457,11 @@ function normalizeSentence(text) {
     .trim();
 }
 
-function normalizeWord(text) {
-  return text
-    .toLowerCase()
-    .replace(/[.,/#!$%^&*;:{}=\-_`~()'"?।\s]/g, "")
-    .trim();
+function clearTimer() {
+  if (timerId) {
+    clearInterval(timerId);
+    timerId = null;
+  }
 }
 
 function resetSession() {
@@ -505,13 +469,7 @@ function resetSession() {
   currentIndex = 0;
   activeQuestion = null;
   sessionScore = { correct: 0, attempted: 0 };
-}
-
-function clearTimer() {
-  if (timerId) {
-    clearInterval(timerId);
-    timerId = null;
-  }
+  feedback.classList.add("hidden");
 }
 
 function setFeedback(message, type) {
@@ -526,7 +484,6 @@ function loadProgress() {
     if (!raw) {
       return { correct: 0, attempted: 0, currentStreak: 0, bestStreak: 0 };
     }
-
     const parsed = JSON.parse(raw);
     return {
       correct: Number(parsed.correct) || 0,
