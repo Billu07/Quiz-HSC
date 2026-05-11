@@ -17,6 +17,11 @@ Simple static quiz app for practicing:
 - `MCQ Challenge` (4-option multiple choice on Samas category)
 - End-of-session `Answer Sheet` with per-question explanation
 
+## Quiz Flow
+- `Next` submits and moves to the next question
+- No per-question score reveal during normal quiz flow
+- Full correctness review appears in the final Answer Sheet
+
 ## Responsive Behavior
 - Mobile-first layout (small screens are default)
 - Quiz appears at the top (quiz-first layout)

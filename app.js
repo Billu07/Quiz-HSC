@@ -23,7 +23,6 @@ const choiceWrap = document.getElementById("choiceWrap");
 const textAnswerWrap = document.getElementById("textAnswerWrap");
 const textAnswerLabel = document.getElementById("textAnswerLabel");
 const textAnswerInput = document.getElementById("textAnswerInput");
-const checkBtn = document.getElementById("checkBtn");
 const revealBtn = document.getElementById("revealBtn");
 const nextBtn = document.getElementById("nextBtn");
 const feedback = document.getElementById("feedback");
@@ -34,7 +33,7 @@ const answerSheet = document.getElementById("answerSheet");
 const sheetSummary = document.getElementById("sheetSummary");
 const sheetList = document.getElementById("sheetList");
 
-const STORAGE_KEY = "samas_sprint_progress_v4";
+const STORAGE_KEY = "samas_sprint_progress_v5";
 
 const MODE_LABELS = {
   classic: "Classic Drill",
@@ -90,13 +89,9 @@ function init() {
       modeCards.forEach((item) => item.classList.remove("mode-active"));
       card.classList.add("mode-active");
       practiceTrack.disabled = mode === "mcq";
-      if (practiceTrack.disabled) {
-        track = "samas_only";
-      } else {
-        track = practiceTrack.value;
-      }
-      updateModeHeader();
+      track = practiceTrack.disabled ? "samas_only" : practiceTrack.value;
       timerEl.textContent = mode === "speed" ? "60s" : "--";
+      updateModeHeader();
     });
   });
 
@@ -108,7 +103,6 @@ function init() {
   startBtn.addEventListener("click", startSession);
   answerForm.addEventListener("submit", onSubmitAnswer);
   revealBtn.addEventListener("click", onRevealAnswer);
-  nextBtn.addEventListener("click", goNext);
   knewBtn.addEventListener("click", () => onFlashMark(true));
   reviewBtn.addEventListener("click", () => onFlashMark(false));
 
@@ -121,7 +115,6 @@ function startSession() {
   resetSession();
 
   track = mode === "mcq" ? "samas_only" : practiceTrack.value;
-
   const pickedCount = Number(questionCount.value);
   const pickedCategory = categoryFilter.value;
 
@@ -137,7 +130,6 @@ function startSession() {
   }
 
   queue = shuffle([...filtered]).slice(0, Math.min(pickedCount, filtered.length));
-  answerForm.classList.remove("hidden");
 
   if (mode === "speed") {
     timeLeft = 60;
@@ -171,27 +163,24 @@ function renderQuestion() {
   qIndex.textContent = `প্রশ্ন ${currentIndex + 1} / ${queue.length}`;
   qModeTag.textContent = buildQuestionTag();
   qPrompt.textContent = `সমস্তপদ: ${activeQuestion.word}`;
-
   feedback.classList.add("hidden");
   feedback.classList.remove("ok", "bad");
-  nextBtn.classList.add("hidden");
   flashActions.classList.add("hidden");
-  checkBtn.classList.remove("hidden");
-  revealBtn.classList.remove("hidden");
   textAnswerInput.value = "";
   clearChoices();
 
+  answerForm.classList.remove("hidden");
+  revealBtn.classList.remove("hidden");
+
   if (mode === "flash") {
-    answerForm.classList.remove("hidden");
+    nextBtn.classList.add("hidden");
     choiceWrap.classList.add("hidden");
     textAnswerWrap.classList.add("hidden");
-    checkBtn.classList.add("hidden");
-    revealBtn.classList.remove("hidden");
     qInstruction.textContent = "প্রথমে উত্তর ভাবো, তারপর Reveal Answer চাপো।";
     return;
   }
 
-  answerForm.classList.remove("hidden");
+  nextBtn.classList.remove("hidden");
   renderTrackInputs();
 }
 
@@ -205,7 +194,7 @@ function renderTrackInputs() {
   }
 
   if (track === "full") {
-    qInstruction.textContent = "সমাস নির্ণয় করো এবং ব্যাসবাক্য লিখো।";
+    qInstruction.textContent = "সমাস নির্ণয় করো এবং ব্যাসবাক্য লিখো। তারপর Next চাপো।";
     choiceWrap.classList.remove("hidden");
     textAnswerWrap.classList.remove("hidden");
     textAnswerLabel.textContent = "ব্যাসবাক্য লিখো";
@@ -215,7 +204,7 @@ function renderTrackInputs() {
   }
 
   if (track === "byas_only") {
-    qInstruction.textContent = "সঠিক ব্যাসবাক্য লিখো।";
+    qInstruction.textContent = "সঠিক ব্যাসবাক্য লিখে Next চাপো।";
     choiceWrap.classList.add("hidden");
     textAnswerWrap.classList.remove("hidden");
     textAnswerLabel.textContent = "ব্যাসবাক্য লিখো";
@@ -223,7 +212,7 @@ function renderTrackInputs() {
     return;
   }
 
-  qInstruction.textContent = "সঠিক সমাসের নাম নির্ণয় করো।";
+  qInstruction.textContent = "সঠিক সমাসের নাম নির্বাচন করে Next চাপো।";
   choiceWrap.classList.remove("hidden");
   textAnswerWrap.classList.add("hidden");
   renderChoices(false);
@@ -232,7 +221,6 @@ function renderTrackInputs() {
 function renderChoices(isMcq) {
   choiceWrap.innerHTML = "";
   const options = isMcq ? getMcqOptions(activeQuestion.category) : MAIN_CATEGORIES;
-
   options.forEach((category) => {
     const label = document.createElement("label");
     label.className = "choice";
@@ -262,117 +250,96 @@ function clearChoices() {
 
 function onSubmitAnswer(event) {
   event.preventDefault();
-  if (!activeQuestion || questionLocked) {
+  if (!activeQuestion || questionLocked || mode === "flash") {
     return;
   }
 
-  if (mode === "mcq") {
-    checkSamasOnly(true);
-    return;
-  }
-
-  if (track === "full") {
-    checkFullTrack();
-    return;
-  }
-
-  if (track === "byas_only") {
-    checkByasOnly();
-    return;
-  }
-
-  checkSamasOnly(false);
-}
-
-function checkFullTrack() {
-  const selectedCategory = getCheckedCategory();
-  if (!selectedCategory) {
-    setFeedback("একটি সমাসের নাম নির্বাচন করো।", "bad");
+  const evaluation = evaluateCurrentAnswer();
+  if (!evaluation.valid) {
+    setFeedback(evaluation.message, "bad");
     feedback.classList.remove("hidden");
     return;
+  }
+
+  questionLocked = true;
+  feedback.classList.add("hidden");
+  registerResult(evaluation.correct);
+  recordSessionAnswer(evaluation.record);
+  goNext();
+}
+
+function evaluateCurrentAnswer() {
+  if (mode === "mcq") {
+    return evaluateSamasOnly(true);
+  }
+  if (track === "full") {
+    return evaluateFullTrack();
+  }
+  if (track === "byas_only") {
+    return evaluateByasOnly();
+  }
+  return evaluateSamasOnly(false);
+}
+
+function evaluateFullTrack() {
+  const selectedCategory = getCheckedCategory();
+  if (!selectedCategory) {
+    return { valid: false, message: "একটি সমাসের নাম নির্বাচন করো।" };
   }
 
   const userByas = textAnswerInput.value.trim();
   if (!userByas) {
-    setFeedback("ব্যাসবাক্য ঘরটি পূরণ করো।", "bad");
-    feedback.classList.remove("hidden");
-    return;
+    return { valid: false, message: "ব্যাসবাক্য ঘরটি পূরণ করো।" };
   }
 
   const categoryCorrect = selectedCategory === activeQuestion.category;
   const byasCorrect = isByasCorrect(userByas, activeQuestion.byasabakya);
   const correct = categoryCorrect && byasCorrect;
 
-  registerResult(correct);
-  recordSessionAnswer({
+  return {
+    valid: true,
     correct,
-    userCategory: selectedCategory,
-    userByas
-  });
-
-  const resultText = [
-    `<p><strong>${correct ? "চমৎকার!" : "আরেকবার চেষ্টা করো"}</strong></p>`,
-    `<p><strong>সমাস:</strong> ${selectedCategory} (${categoryCorrect ? "সঠিক" : "ভুল"})</p>`,
-    `<p><strong>ব্যাসবাক্য:</strong> ${escapeHtml(userByas)} (${byasCorrect ? "সঠিক" : "ভুল"})</p>`,
-    `<p><strong>সঠিক সমাস:</strong> ${activeQuestion.category}</p>`,
-    `<p><strong>রেফারেন্স ব্যাসবাক্য:</strong> ${activeQuestion.byasabakya}</p>`,
-    `<p><strong>ব্যাখ্যা:</strong> ${buildExplanation(activeQuestion)}</p>`
-  ].join("");
-
-  showResult(resultText, correct);
+    record: {
+      correct,
+      userCategory: selectedCategory,
+      userByas
+    }
+  };
 }
 
-function checkByasOnly() {
+function evaluateByasOnly() {
   const userByas = textAnswerInput.value.trim();
   if (!userByas) {
-    setFeedback("ব্যাসবাক্য লিখে তারপর Check করো।", "bad");
-    feedback.classList.remove("hidden");
-    return;
+    return { valid: false, message: "ব্যাসবাক্য লিখে তারপর Next চাপো।" };
   }
 
   const correct = isByasCorrect(userByas, activeQuestion.byasabakya);
-  registerResult(correct);
-  recordSessionAnswer({
+  return {
+    valid: true,
     correct,
-    userByas
-  });
-
-  const resultText = [
-    `<p><strong>${correct ? "সঠিক হয়েছে" : "ভুল হয়েছে"}</strong></p>`,
-    `<p><strong>তোমার ব্যাসবাক্য:</strong> ${escapeHtml(userByas)}</p>`,
-    `<p><strong>রেফারেন্স ব্যাসবাক্য:</strong> ${activeQuestion.byasabakya}</p>`,
-    `<p><strong>সঠিক সমাস:</strong> ${activeQuestion.category}</p>`,
-    `<p><strong>ব্যাখ্যা:</strong> ${buildExplanation(activeQuestion)}</p>`
-  ].join("");
-
-  showResult(resultText, correct);
+    record: {
+      correct,
+      userByas
+    }
+  };
 }
 
-function checkSamasOnly(isMcqMode) {
+function evaluateSamasOnly(mcqMode) {
   const selectedCategory = getCheckedCategory();
   if (!selectedCategory) {
-    setFeedback("একটি সমাসের নাম নির্বাচন করো।", "bad");
-    feedback.classList.remove("hidden");
-    return;
+    return { valid: false, message: "একটি সমাসের নাম নির্বাচন করো।" };
   }
 
   const correct = selectedCategory === activeQuestion.category;
-  registerResult(correct);
-  recordSessionAnswer({
+  return {
+    valid: true,
     correct,
-    userCategory: selectedCategory,
-    mcq: isMcqMode
-  });
-
-  const resultText = [
-    `<p><strong>${correct ? "সঠিক হয়েছে" : "ভুল হয়েছে"}</strong></p>`,
-    `<p><strong>তোমার উত্তর:</strong> ${selectedCategory}</p>`,
-    `<p><strong>সঠিক সমাস:</strong> ${activeQuestion.category}</p>`,
-    `<p><strong>ব্যাসবাক্য:</strong> ${activeQuestion.byasabakya}</p>`,
-    `<p><strong>ব্যাখ্যা:</strong> ${buildExplanation(activeQuestion)}</p>`
-  ].join("");
-
-  showResult(resultText, correct);
+    record: {
+      correct,
+      userCategory: selectedCategory,
+      mcq: mcqMode
+    }
+  };
 }
 
 function onRevealAnswer() {
@@ -392,14 +359,11 @@ function onRevealAnswer() {
 
   if (mode === "flash") {
     flashActions.classList.remove("hidden");
-    return;
   }
-
-  nextBtn.classList.remove("hidden");
 }
 
 function onFlashMark(correct) {
-  if (questionLocked || !activeQuestion) {
+  if (!activeQuestion || questionLocked) {
     return;
   }
 
@@ -413,19 +377,6 @@ function onFlashMark(correct) {
   goNext();
 }
 
-function showResult(message, isCorrect) {
-  questionLocked = true;
-  setFeedback(message, isCorrect ? "ok" : "bad");
-  feedback.classList.remove("hidden");
-
-  if (mode === "speed") {
-    window.setTimeout(goNext, 520);
-    return;
-  }
-
-  nextBtn.classList.remove("hidden");
-}
-
 function goNext() {
   currentIndex += 1;
   renderQuestion();
@@ -436,7 +387,6 @@ function finishSession(reason) {
   activeQuestion = null;
   answerForm.classList.add("hidden");
   flashActions.classList.add("hidden");
-  nextBtn.classList.add("hidden");
 
   qIndex.textContent = "Session Complete";
   qModeTag.textContent = buildQuestionTag();
@@ -448,7 +398,6 @@ function finishSession(reason) {
     "ok"
   );
   feedback.classList.remove("hidden");
-
   renderAnswerSheet(reason);
 }
 
