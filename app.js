@@ -1,6 +1,7 @@
 import questionBank, { MAIN_CATEGORIES } from "./data/questions.js";
 
 const TEST_SIZE = 8;
+const MIXED_KEY = "__mixed__";
 const TEST_CATALOG = buildTestCatalog(questionBank);
 
 const bankCount = document.getElementById("bankCount");
@@ -53,6 +54,10 @@ const TRACK_LABELS = {
   full: "Full Pair",
   byas_only: "Only ব্যাসবাক্য",
   samas_only: "Only সমাস নির্ণয়"
+};
+
+const SCOPE_LABELS = {
+  [MIXED_KEY]: "Mixed (All Samas Types)"
 };
 
 const CATEGORY_EXPLANATIONS = {
@@ -129,12 +134,25 @@ function init() {
 function seedCategoryOptions() {
   const validCategories = MAIN_CATEGORIES.filter((category) => (TEST_CATALOG[category] || []).length > 0);
 
+  const mixedOption = document.createElement("option");
+  mixedOption.value = MIXED_KEY;
+  mixedOption.textContent = SCOPE_LABELS[MIXED_KEY];
+  categoryFilter.appendChild(mixedOption);
+
   validCategories.forEach((category) => {
     const option = document.createElement("option");
     option.value = category;
     option.textContent = category;
     categoryFilter.appendChild(option);
   });
+
+  if ((TEST_CATALOG[MIXED_KEY] || []).length > 0) {
+    activeCategory = MIXED_KEY;
+    categoryFilter.value = MIXED_KEY;
+    populateTestPackSelect(MIXED_KEY);
+    updateTestStatus();
+    return;
+  }
 
   if (validCategories.length > 0) {
     activeCategory = validCategories[0];
@@ -150,7 +168,7 @@ function startSession(overrides = {}) {
 
   const category = overrides.category || categoryFilter.value;
   if (!category || !TEST_CATALOG[category] || TEST_CATALOG[category].length === 0) {
-    setFeedback("প্রথমে একটি category বেছে নাও।", "bad");
+    setFeedback("প্রথমে একটি test scope বেছে নাও।", "bad");
     feedback.classList.remove("hidden");
     return;
   }
@@ -181,7 +199,7 @@ function startSession(overrides = {}) {
   queue = [...activeTestPacks[activeTestIndex].questions];
 
   if (queue.length === 0) {
-    setFeedback("এই test-এ প্রশ্ন পাওয়া যায়নি।", "bad");
+    setFeedback("এই test pack-এ প্রশ্ন পাওয়া যায়নি।", "bad");
     feedback.classList.remove("hidden");
     return;
   }
@@ -463,7 +481,7 @@ function renderAnswerSheet(reason) {
     ? Math.round((sessionScore.correct / sessionScore.attempted) * 100)
     : 0;
 
-  sheetSummary.textContent = `${activeCategory} | ${activeTestName} | ${reason} | Score ${sessionScore.correct}/${sessionScore.attempted} | Accuracy ${sessionAccuracy}%`;
+  sheetSummary.textContent = `${getScopeLabel(activeCategory)} | ${activeTestName} | ${reason} | Score ${sessionScore.correct}/${sessionScore.attempted} | Accuracy ${sessionAccuracy}%`;
 
   const recordMap = new Map(sessionRecords.map((item) => [item.questionId, item]));
   sheetList.innerHTML = queue.map((question, index) => {
@@ -564,7 +582,7 @@ function populateTestPackSelect(category) {
 function updateTestStatus() {
   const category = categoryFilter.value;
   if (!category || !(TEST_CATALOG[category] || []).length) {
-    testStatus.textContent = "Pick a category to see its predefined test roadmap.";
+    testStatus.textContent = "Pick a test scope to see its predefined roadmap.";
     return;
   }
 
@@ -574,6 +592,7 @@ function updateTestStatus() {
   const lastCompleted = state.lastCompletedIndex >= 0 ? packs[state.lastCompletedIndex] : null;
 
   testStatus.textContent = [
+    `Scope: ${getScopeLabel(category)}`,
     `Roadmap: ${packs.length} tests`,
     `Resume: ${resumePack ? resumePack.shortName : "N/A"}`,
     `Last Completed: ${lastCompleted ? lastCompleted.shortName : "None yet"}`
@@ -689,6 +708,13 @@ function buildQuestionTag() {
   return `${MODE_LABELS[mode]} • ${TRACK_LABELS[track]}`;
 }
 
+function getScopeLabel(scopeKey) {
+  if (SCOPE_LABELS[scopeKey]) {
+    return SCOPE_LABELS[scopeKey];
+  }
+  return scopeKey;
+}
+
 function getCheckedCategory() {
   const selected = document.querySelector('input[name="categoryChoice"]:checked');
   return selected ? selected.value : "";
@@ -766,11 +792,14 @@ function setFeedback(message, type) {
 
 function buildTestCatalog(questions) {
   const catalog = {};
+  const categoryBuckets = {};
 
   MAIN_CATEGORIES.forEach((category) => {
     const perCategory = questions
       .filter((item) => item.category === category)
       .sort((a, b) => a.id - b.id);
+
+    categoryBuckets[category] = [...perCategory];
 
     const chunks = chunkArray(perCategory, TEST_SIZE);
     catalog[category] = chunks.map((chunk, index) => {
@@ -786,7 +815,39 @@ function buildTestCatalog(questions) {
     });
   });
 
+  const mixedPool = interleaveByCategory(categoryBuckets);
+  const mixedChunks = chunkArray(mixedPool, TEST_SIZE);
+  catalog[MIXED_KEY] = mixedChunks.map((chunk, index) => {
+    const number = index + 1;
+    const label = String(number).padStart(2, "0");
+    const shortName = `Test ${label}`;
+    return {
+      index,
+      shortName,
+      name: `Mixed Mastery Test ${label}`,
+      questions: chunk
+    };
+  });
+
   return catalog;
+}
+
+function interleaveByCategory(bucketMap) {
+  const working = MAIN_CATEGORIES.map((category) => [...(bucketMap[category] || [])]);
+  const output = [];
+  let hasAny = true;
+
+  while (hasAny) {
+    hasAny = false;
+    for (let i = 0; i < working.length; i += 1) {
+      if (working[i].length > 0) {
+        hasAny = true;
+        output.push(working[i].shift());
+      }
+    }
+  }
+
+  return output;
 }
 
 function chunkArray(arr, size) {

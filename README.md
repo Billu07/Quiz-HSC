@@ -10,8 +10,9 @@ Static quiz app for practicing:
 
 ## Standardized Test System
 - Category-wise predefined tests (`Test 01`, `Test 02`, etc.)
+- Mixed predefined tests (`Mixed Scope`) for real samas-detection without category hints
 - Every question is covered through fixed test packs
-- Resume support per category (`Resume Last Test`)
+- Resume support per scope (`Resume Last Test`)
 - Retake support for any selected test
 - One-click `Start Next Test` and `Retake This Test` after each session
 
