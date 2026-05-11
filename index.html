@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Samas Sprint | HSC Bangla 2nd Paper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="bg-glow glow-a"></div>
+  <div class="bg-glow glow-b"></div>
+
+  <header class="topbar">
+    <a class="brand" href="#home">Samas Sprint</a>
+    <nav class="nav">
+      <a href="#home">Home</a>
+      <a href="#practice">Practice</a>
+      <a href="#modes">Game Modes</a>
+      <a href="#sources">Source Sheets</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="home" class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">HSC Bangla 2nd Paper</p>
+        <h1>Master Samas with quick, fun repetition.</h1>
+        <p>
+          App navigation is in English. Quiz prompts and answers stay in Bengali so students practice in exam-style language.
+        </p>
+        <div class="hero-actions">
+          <a href="#practice" class="btn btn-primary">Start Practice</a>
+          <a href="#sources" class="btn btn-ghost">Open Source Sheets</a>
+        </div>
+      </div>
+      <div class="hero-cards">
+        <article class="hero-card">
+          <h3>Question Bank</h3>
+          <p><span id="bankCount">0</span> items ready</p>
+        </article>
+        <article class="hero-card">
+          <h3>Tracked Progress</h3>
+          <p>Local streak + accuracy</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="modes" class="panel">
+      <div class="panel-head">
+        <h2>Game Modes</h2>
+      </div>
+      <div class="mode-grid">
+        <article class="mode-card mode-active" data-pick-mode="classic">
+          <h3>Classic Drill</h3>
+          <p>Guided practice with direct checking.</p>
+        </article>
+        <article class="mode-card" data-pick-mode="speed">
+          <h3>Speed Round</h3>
+          <p>60-second rapid-fire responses.</p>
+        </article>
+        <article class="mode-card" data-pick-mode="flash">
+          <h3>Flash Reveal</h3>
+          <p>See prompt first, reveal answer, self-mark revision.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="practice" class="panel">
+      <div class="panel-head">
+        <h2>Practice Arena</h2>
+        <p class="bn-note">প্রশ্ন: সমস্তপদ থেকে সমাস নির্ণয় ও ব্যাসবাক্য অনুশীলন</p>
+      </div>
+
+      <div class="controls">
+        <label>
+          Question Set
+          <select id="questionCount">
+            <option value="5">5 questions</option>
+            <option value="10" selected>10 questions</option>
+            <option value="15">15 questions</option>
+            <option value="20">20 questions</option>
+          </select>
+        </label>
+        <label>
+          Focus Category
+          <select id="categoryFilter">
+            <option value="all">All categories</option>
+          </select>
+        </label>
+        <label>
+          Practice Track
+          <select id="practiceTrack">
+            <option value="full" selected>Full Pair (সমাস + ব্যাসবাক্য)</option>
+            <option value="byas_only">Only ব্যাসবাক্য</option>
+            <option value="somosto_only">Only সমস্তপদ</option>
+          </select>
+        </label>
+        <button id="startBtn" class="btn btn-primary">Start Session</button>
+      </div>
+
+      <div class="stats">
+        <article class="stat-card">
+          <h4>Mode</h4>
+          <p id="modeName">Classic Drill</p>
+        </article>
+        <article class="stat-card">
+          <h4>Score</h4>
+          <p><span id="score">0</span> / <span id="attempted">0</span></p>
+        </article>
+        <article class="stat-card">
+          <h4>Accuracy</h4>
+          <p id="accuracy">0%</p>
+        </article>
+        <article class="stat-card">
+          <h4>Best Streak</h4>
+          <p id="bestStreak">0</p>
+        </article>
+        <article class="stat-card">
+          <h4>Timer</h4>
+          <p id="timer">--</p>
+        </article>
+      </div>
+
+      <article id="quizCard" class="quiz-card hidden">
+        <div class="quiz-top">
+          <p id="qIndex">প্রশ্ন ১</p>
+          <p class="muted" id="qModeTag">Classic</p>
+        </div>
+        <h3 id="qPrompt" class="bn">সমস্তপদ: ---</h3>
+        <p id="qInstruction" class="bn muted">সঠিক সমাসের নাম নির্ণয় করো</p>
+
+        <form id="answerForm">
+          <fieldset id="choiceWrap" class="choice-wrap"></fieldset>
+
+          <div id="textAnswerWrap" class="byas-wrap">
+            <label for="textAnswerInput" class="bn" id="textAnswerLabel">ব্যাসবাক্য লিখো</label>
+            <textarea id="textAnswerInput" rows="3" placeholder="উদাহরণ: রাজার পুত্র"></textarea>
+          </div>
+
+          <div class="quiz-actions">
+            <button type="submit" class="btn btn-primary" id="checkBtn">Check</button>
+            <button type="button" class="btn btn-ghost" id="revealBtn">Reveal Answer</button>
+            <button type="button" class="btn btn-soft hidden" id="nextBtn">Next</button>
+          </div>
+        </form>
+
+        <div id="flashActions" class="flash-actions hidden">
+          <button type="button" class="btn btn-primary" id="knewBtn">I Knew This</button>
+          <button type="button" class="btn btn-soft" id="reviewBtn">Need Review</button>
+        </div>
+
+        <div id="feedback" class="feedback hidden"></div>
+      </article>
+    </section>
+
+    <section id="sources" class="panel">
+      <div class="panel-head">
+        <h2>Source Sheets</h2>
+        <p>Uploaded HSC question sheets are kept here for manual validation and future data expansion.</p>
+      </div>
+      <div class="gallery">
+        <img src="./1.jpeg" alt="Source sheet 1" loading="lazy" />
+        <img src="./2.jpeg" alt="Source sheet 2" loading="lazy" />
+        <img src="./3.jpeg" alt="Source sheet 3" loading="lazy" />
+        <img src="./4.jpeg" alt="Source sheet 4" loading="lazy" />
+        <img src="./5.jpeg" alt="Source sheet 5" loading="lazy" />
+        <img src="./6.jpeg" alt="Source sheet 6" loading="lazy" />
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>Built for HSC Bangla 2nd Paper practice: সমাস নির্ণয় + ব্যাসবাক্য।</p>
+  </footer>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
