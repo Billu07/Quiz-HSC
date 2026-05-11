@@ -1,6 +1,6 @@
 # Samas Sprint (HSC Bangla 2nd Paper)
 
-Simple static quiz app for practicing:
+Static quiz app for practicing:
 - Samas category detection
 - Byasabakya writing
 
@@ -8,62 +8,59 @@ Simple static quiz app for practicing:
 - Navigation/UI labels: English
 - Practice content: Bengali
 
+## Standardized Test System
+- Category-wise predefined tests (`Test 01`, `Test 02`, etc.)
+- Every question is covered through fixed test packs
+- Resume support per category (`Resume Last Test`)
+- Retake support for any selected test
+- One-click `Start Next Test` and `Retake This Test` after each session
+
 ## Practice Tracks
 - `Full Pair (Samas + Byasabakya)`
 - `Only Byasabakya`
 - `Only Samas Category`
 
-## Extra Modes
-- `MCQ Challenge` (4-option multiple choice on Samas category)
-- End-of-session `Answer Sheet` with per-question explanation
+## Modes
+- `Classic Drill`
+- `MCQ Challenge` (4-option multiple choice)
+- `Speed Round`
+- `Flash Reveal`
 
 ## Quiz Flow
-- `Next` submits and moves to the next question
-- No per-question score reveal during normal quiz flow
-- Full correctness review appears in the final Answer Sheet
+- `Next` submits answer and moves forward
+- No per-question score reveal in normal flow
+- End-of-session `Answer Sheet` shows:
+  - your answers
+  - correct answers
+  - short explanation for each item
 
 ## Responsive Behavior
-- Mobile-first layout (small screens are default)
-- Quiz appears at the top (quiz-first layout)
-- Tablet and desktop enhancements via media queries
+- Mobile-first layout
+- Quiz-first page structure
+- Tablet and desktop breakpoints
 
 ## Files
-- `index.html` - app structure
-- `styles.css` - visual design + responsive layout
-- `app.js` - quiz logic (`Classic`, `Speed`, `Flash`)
-- `data/questions.js` - editable question bank
-- `1.jpeg` to `6.jpeg` - source reference images (not shown in home UI)
+- `index.html` - structure and UI sections
+- `styles.css` - styling and responsive layout
+- `app.js` - quiz engine, standardized tests, resume/retake logic
+- `data/questions.js` - question bank
 
 ## Run Locally
-Any static server is enough.
-
-Example:
 ```powershell
 python -m http.server 5500
 ```
-
-Then open:
+Open:
 `http://localhost:5500`
 
 ## Deploy to Vercel
-1. Create/import this folder as a Vercel project.
+1. Import this folder in Vercel.
 2. Framework preset: `Other` (or no framework).
 3. Build command: leave empty.
-4. Output directory: leave empty (root).
+4. Output directory: root.
 5. Deploy.
 
-## Add or Edit Questions
-Edit `data/questions.js` entries:
+## Add Questions
+Edit `data/questions.js`:
 ```js
 { id: 108, word: "নতুনশব্দ", byasabakya: "ব্যাসবাক্য", category: "তৎপুরুষ" }
 ```
-
-Allowed categories in this app:
-- `তৎপুরুষ`
-- `কর্মধারয়`
-- `বহুব্রীহি`
-- `দ্বন্দ্ব`
-- `দ্বিগু`
-- `অব্যয়ীভাব`
-- `নিত্য`
-- `প্রাদি`

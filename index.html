@@ -58,7 +58,7 @@
           <p class="muted" id="qModeTag">Classic Drill</p>
         </div>
         <h3 id="qPrompt" class="bn">Start Session চাপলে প্রশ্ন শুরু হবে</h3>
-        <p id="qInstruction" class="bn muted">ট্র্যাক বেছে Start Session চাপো</p>
+        <p id="qInstruction" class="bn muted">Track বেছে Start Session চাপো</p>
 
         <form id="answerForm" class="hidden">
           <fieldset id="choiceWrap" class="choice-wrap"></fieldset>
@@ -88,13 +88,17 @@
           <p id="sheetSummary">Session summary will appear here.</p>
         </div>
         <div id="sheetList" class="sheet-list"></div>
+        <div class="sheet-actions">
+          <button type="button" class="btn btn-primary" id="nextTestBtn">Start Next Test</button>
+          <button type="button" class="btn btn-soft" id="retakeTestBtn">Retake This Test</button>
+        </div>
       </section>
     </section>
 
     <section class="panel setup-stage">
       <div class="panel-head">
         <h2>Session Setup</h2>
-        <p>Choose a mode and a practice track, then begin instantly.</p>
+        <p>Use predefined tests by category, then resume or retake as needed.</p>
       </div>
 
       <div class="mode-grid">
@@ -118,18 +122,20 @@
 
       <div class="controls">
         <label>
-          Question Set
-          <select id="questionCount">
-            <option value="5">5 questions</option>
-            <option value="10" selected>10 questions</option>
-            <option value="15">15 questions</option>
-            <option value="20">20 questions</option>
+          Focus Category
+          <select id="categoryFilter">
+            <option value="">Select category</option>
           </select>
         </label>
         <label>
-          Focus Category
-          <select id="categoryFilter">
-            <option value="all">All categories</option>
+          Standard Test
+          <select id="testPackSelect"></select>
+        </label>
+        <label>
+          Start Option
+          <select id="startStrategy">
+            <option value="resume">Resume Last Test (Recommended)</option>
+            <option value="selected">Start Selected Test</option>
           </select>
         </label>
         <label>
@@ -142,6 +148,7 @@
         </label>
         <button id="startBtn" class="btn btn-primary start-btn">Start Session</button>
       </div>
+      <p id="testStatus" class="muted"></p>
     </section>
   </main>
 

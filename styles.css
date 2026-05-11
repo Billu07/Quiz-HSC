@@ -321,6 +321,13 @@ textarea:focus {
   gap: 0.56rem;
 }
 
+.sheet-actions {
+  margin-top: 0.72rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .sheet-item {
   border: 1px solid var(--line);
   border-radius: 11px;
@@ -399,6 +406,16 @@ textarea:focus {
 
 .start-btn {
   min-height: 42px;
+}
+
+#testStatus {
+  margin: 0.68rem 0 0;
+  font-size: 0.88rem;
+}
+
+.btn:disabled {
+  opacity: 0.52;
+  cursor: not-allowed;
 }
 
 .hidden {
