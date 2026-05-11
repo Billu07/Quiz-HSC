@@ -14,7 +14,6 @@ const startBtn = document.getElementById("startBtn");
 const modeCards = Array.from(document.querySelectorAll("[data-pick-mode]"));
 
 const quizStage = document.getElementById("quizStage");
-const quizCard = document.getElementById("quizCard");
 const qIndex = document.getElementById("qIndex");
 const qModeTag = document.getElementById("qModeTag");
 const qPrompt = document.getElementById("qPrompt");
@@ -31,11 +30,15 @@ const feedback = document.getElementById("feedback");
 const flashActions = document.getElementById("flashActions");
 const knewBtn = document.getElementById("knewBtn");
 const reviewBtn = document.getElementById("reviewBtn");
+const answerSheet = document.getElementById("answerSheet");
+const sheetSummary = document.getElementById("sheetSummary");
+const sheetList = document.getElementById("sheetList");
 
-const STORAGE_KEY = "samas_sprint_progress_v3";
+const STORAGE_KEY = "samas_sprint_progress_v4";
 
 const MODE_LABELS = {
   classic: "Classic Drill",
+  mcq: "MCQ Challenge",
   speed: "Speed Round",
   flash: "Flash Reveal"
 };
@@ -46,6 +49,17 @@ const TRACK_LABELS = {
   samas_only: "Only সমাস নির্ণয়"
 };
 
+const CATEGORY_EXPLANATIONS = {
+  তৎপুরুষ: "ব্যাসবাক্যে পূর্বপদ ও পরপদের মধ্যে বিভক্তির সম্পর্ক থাকে, তাই এটি তৎপুরুষ।",
+  কর্মধারয়: "একই পদার্থকে বিশেষণ-বিশেষ্যভাবে প্রকাশ করে, তাই এটি কর্মধারয়।",
+  বহুব্রীহি: "সমস্তপদটি সাধারণত অন্য কিছুকে বোঝায় (যার/যাদের অর্থে), তাই এটি বহুব্রীহি।",
+  দ্বন্দ্ব: "দুই বা ততোধিক পদ সমান গুরুত্বে যুক্ত হয়, তাই এটি দ্বন্দ্ব।",
+  দ্বিগু: "সংখ্যাবাচক পূর্বপদ দিয়ে সমাহার বোঝায়, তাই এটি দ্বিগু।",
+  অব্যয়ীভাব: "অব্যয়/উপসর্গজাত অর্থে সম্পূর্ণ পদটি ক্রিয়া বা অবস্থার ভাব প্রকাশ করে, তাই এটি অব্যয়ীভাব।",
+  নিত্য: "পদটি প্রথাগতভাবে বিশেষ অর্থে স্থির হয়ে গেছে, তাই এটি নিত্য সমাস।",
+  প্রাদি: "প্র, পরা, আপ ইত্যাদি উপসর্গজাত গঠনে প্রকৃষ্ট বা বিশেষ অর্থ তৈরি করেছে, তাই এটি প্রাদি।"
+};
+
 let mode = "classic";
 let track = "full";
 let queue = [];
@@ -53,7 +67,9 @@ let currentIndex = 0;
 let activeQuestion = null;
 let timerId = null;
 let timeLeft = 60;
+let questionLocked = false;
 let sessionScore = { correct: 0, attempted: 0 };
+let sessionRecords = [];
 let progress = loadProgress();
 
 init();
@@ -73,6 +89,12 @@ function init() {
       mode = card.dataset.pickMode;
       modeCards.forEach((item) => item.classList.remove("mode-active"));
       card.classList.add("mode-active");
+      practiceTrack.disabled = mode === "mcq";
+      if (practiceTrack.disabled) {
+        track = "samas_only";
+      } else {
+        track = practiceTrack.value;
+      }
       updateModeHeader();
       timerEl.textContent = mode === "speed" ? "60s" : "--";
     });
@@ -98,7 +120,8 @@ function startSession() {
   clearTimer();
   resetSession();
 
-  track = practiceTrack.value;
+  track = mode === "mcq" ? "samas_only" : practiceTrack.value;
+
   const pickedCount = Number(questionCount.value);
   const pickedCategory = categoryFilter.value;
 
@@ -115,7 +138,6 @@ function startSession() {
 
   queue = shuffle([...filtered]).slice(0, Math.min(pickedCount, filtered.length));
   answerForm.classList.remove("hidden");
-  quizCard.classList.remove("hidden");
 
   if (mode === "speed") {
     timeLeft = 60;
@@ -132,6 +154,7 @@ function startSession() {
     timerEl.textContent = "--";
   }
 
+  updateModeHeader();
   quizStage.scrollIntoView({ behavior: "smooth", block: "start" });
   renderQuestion();
 }
@@ -143,14 +166,18 @@ function renderQuestion() {
   }
 
   activeQuestion = queue[currentIndex];
+  questionLocked = false;
+
   qIndex.textContent = `প্রশ্ন ${currentIndex + 1} / ${queue.length}`;
-  qModeTag.textContent = `${MODE_LABELS[mode]} | ${TRACK_LABELS[track]}`;
+  qModeTag.textContent = buildQuestionTag();
   qPrompt.textContent = `সমস্তপদ: ${activeQuestion.word}`;
 
   feedback.classList.add("hidden");
   feedback.classList.remove("ok", "bad");
   nextBtn.classList.add("hidden");
   flashActions.classList.add("hidden");
+  checkBtn.classList.remove("hidden");
+  revealBtn.classList.remove("hidden");
   textAnswerInput.value = "";
   clearChoices();
 
@@ -160,7 +187,7 @@ function renderQuestion() {
     textAnswerWrap.classList.add("hidden");
     checkBtn.classList.add("hidden");
     revealBtn.classList.remove("hidden");
-    qInstruction.textContent = "প্রথমে উত্তর ভাবো, তারপর Reveal Answer চাপো";
+    qInstruction.textContent = "প্রথমে উত্তর ভাবো, তারপর Reveal Answer চাপো।";
     return;
   }
 
@@ -169,40 +196,44 @@ function renderQuestion() {
 }
 
 function renderTrackInputs() {
-  checkBtn.classList.remove("hidden");
-  revealBtn.classList.remove("hidden");
+  if (mode === "mcq") {
+    qInstruction.textContent = "৪টি অপশনের মধ্যে সঠিক সমাসের নাম নির্বাচন করো।";
+    choiceWrap.classList.remove("hidden");
+    textAnswerWrap.classList.add("hidden");
+    renderChoices(true);
+    return;
+  }
 
   if (track === "full") {
-    qInstruction.textContent = "সমাস নির্ণয় করো এবং ব্যাসবাক্য লিখো";
+    qInstruction.textContent = "সমাস নির্ণয় করো এবং ব্যাসবাক্য লিখো।";
     choiceWrap.classList.remove("hidden");
     textAnswerWrap.classList.remove("hidden");
     textAnswerLabel.textContent = "ব্যাসবাক্য লিখো";
     textAnswerInput.placeholder = "উদাহরণ: রাজার পুত্র";
-    checkBtn.textContent = "Check";
-    renderChoices();
+    renderChoices(false);
     return;
   }
 
   if (track === "byas_only") {
-    qInstruction.textContent = "সঠিক ব্যাসবাক্য লিখো";
+    qInstruction.textContent = "সঠিক ব্যাসবাক্য লিখো।";
     choiceWrap.classList.add("hidden");
     textAnswerWrap.classList.remove("hidden");
     textAnswerLabel.textContent = "ব্যাসবাক্য লিখো";
     textAnswerInput.placeholder = "উদাহরণ: রাজার পুত্র";
-    checkBtn.textContent = "Check";
     return;
   }
 
-  qInstruction.textContent = "সঠিক সমাসের নাম নির্ণয় করো";
+  qInstruction.textContent = "সঠিক সমাসের নাম নির্ণয় করো।";
   choiceWrap.classList.remove("hidden");
   textAnswerWrap.classList.add("hidden");
-  checkBtn.textContent = "Check";
-  renderChoices();
+  renderChoices(false);
 }
 
-function renderChoices() {
+function renderChoices(isMcq) {
   choiceWrap.innerHTML = "";
-  MAIN_CATEGORIES.forEach((category) => {
+  const options = isMcq ? getMcqOptions(activeQuestion.category) : MAIN_CATEGORIES;
+
+  options.forEach((category) => {
     const label = document.createElement("label");
     label.className = "choice";
 
@@ -219,13 +250,24 @@ function renderChoices() {
   });
 }
 
+function getMcqOptions(correctCategory) {
+  const otherCategories = MAIN_CATEGORIES.filter((item) => item !== correctCategory);
+  const distractors = shuffle([...otherCategories]).slice(0, 3);
+  return shuffle([correctCategory, ...distractors]);
+}
+
 function clearChoices() {
   choiceWrap.innerHTML = "";
 }
 
 function onSubmitAnswer(event) {
   event.preventDefault();
-  if (!activeQuestion) {
+  if (!activeQuestion || questionLocked) {
+    return;
+  }
+
+  if (mode === "mcq") {
+    checkSamasOnly(true);
     return;
   }
 
@@ -239,7 +281,7 @@ function onSubmitAnswer(event) {
     return;
   }
 
-  checkSamasOnly();
+  checkSamasOnly(false);
 }
 
 function checkFullTrack() {
@@ -262,13 +304,19 @@ function checkFullTrack() {
   const correct = categoryCorrect && byasCorrect;
 
   registerResult(correct);
+  recordSessionAnswer({
+    correct,
+    userCategory: selectedCategory,
+    userByas
+  });
 
   const resultText = [
     `<p><strong>${correct ? "চমৎকার!" : "আরেকবার চেষ্টা করো"}</strong></p>`,
     `<p><strong>সমাস:</strong> ${selectedCategory} (${categoryCorrect ? "সঠিক" : "ভুল"})</p>`,
     `<p><strong>ব্যাসবাক্য:</strong> ${escapeHtml(userByas)} (${byasCorrect ? "সঠিক" : "ভুল"})</p>`,
     `<p><strong>সঠিক সমাস:</strong> ${activeQuestion.category}</p>`,
-    `<p><strong>রেফারেন্স ব্যাসবাক্য:</strong> ${activeQuestion.byasabakya}</p>`
+    `<p><strong>রেফারেন্স ব্যাসবাক্য:</strong> ${activeQuestion.byasabakya}</p>`,
+    `<p><strong>ব্যাখ্যা:</strong> ${buildExplanation(activeQuestion)}</p>`
   ].join("");
 
   showResult(resultText, correct);
@@ -284,18 +332,23 @@ function checkByasOnly() {
 
   const correct = isByasCorrect(userByas, activeQuestion.byasabakya);
   registerResult(correct);
+  recordSessionAnswer({
+    correct,
+    userByas
+  });
 
   const resultText = [
     `<p><strong>${correct ? "সঠিক হয়েছে" : "ভুল হয়েছে"}</strong></p>`,
     `<p><strong>তোমার ব্যাসবাক্য:</strong> ${escapeHtml(userByas)}</p>`,
     `<p><strong>রেফারেন্স ব্যাসবাক্য:</strong> ${activeQuestion.byasabakya}</p>`,
-    `<p><strong>সমাস:</strong> ${activeQuestion.category}</p>`
+    `<p><strong>সঠিক সমাস:</strong> ${activeQuestion.category}</p>`,
+    `<p><strong>ব্যাখ্যা:</strong> ${buildExplanation(activeQuestion)}</p>`
   ].join("");
 
   showResult(resultText, correct);
 }
 
-function checkSamasOnly() {
+function checkSamasOnly(isMcqMode) {
   const selectedCategory = getCheckedCategory();
   if (!selectedCategory) {
     setFeedback("একটি সমাসের নাম নির্বাচন করো।", "bad");
@@ -305,12 +358,18 @@ function checkSamasOnly() {
 
   const correct = selectedCategory === activeQuestion.category;
   registerResult(correct);
+  recordSessionAnswer({
+    correct,
+    userCategory: selectedCategory,
+    mcq: isMcqMode
+  });
 
   const resultText = [
     `<p><strong>${correct ? "সঠিক হয়েছে" : "ভুল হয়েছে"}</strong></p>`,
     `<p><strong>তোমার উত্তর:</strong> ${selectedCategory}</p>`,
     `<p><strong>সঠিক সমাস:</strong> ${activeQuestion.category}</p>`,
-    `<p><strong>ব্যাসবাক্য:</strong> ${activeQuestion.byasabakya}</p>`
+    `<p><strong>ব্যাসবাক্য:</strong> ${activeQuestion.byasabakya}</p>`,
+    `<p><strong>ব্যাখ্যা:</strong> ${buildExplanation(activeQuestion)}</p>`
   ].join("");
 
   showResult(resultText, correct);
@@ -322,8 +381,10 @@ function onRevealAnswer() {
   }
 
   const resultText = [
-    `<p><strong>সঠিক সমাস:</strong> ${activeQuestion.category}</p>`,
-    `<p><strong>ব্যাসবাক্য:</strong> ${activeQuestion.byasabakya}</p>`
+    "<p><strong>রেফারেন্স উত্তর:</strong></p>",
+    `<p><strong>সমাস:</strong> ${activeQuestion.category}</p>`,
+    `<p><strong>ব্যাসবাক্য:</strong> ${activeQuestion.byasabakya}</p>`,
+    `<p><strong>ব্যাখ্যা:</strong> ${buildExplanation(activeQuestion)}</p>`
   ].join("");
 
   setFeedback(resultText, "ok");
@@ -338,20 +399,30 @@ function onRevealAnswer() {
 }
 
 function onFlashMark(correct) {
+  if (questionLocked || !activeQuestion) {
+    return;
+  }
+
+  questionLocked = true;
   registerResult(correct);
+  recordSessionAnswer({
+    correct,
+    userCategory: correct ? "Self-marked: knew this" : "Self-marked: need review",
+    byFlashMode: true
+  });
   goNext();
 }
 
 function showResult(message, isCorrect) {
+  questionLocked = true;
+  setFeedback(message, isCorrect ? "ok" : "bad");
+  feedback.classList.remove("hidden");
+
   if (mode === "speed") {
-    setFeedback(message, isCorrect ? "ok" : "bad");
-    feedback.classList.remove("hidden");
     window.setTimeout(goNext, 520);
     return;
   }
 
-  setFeedback(message, isCorrect ? "ok" : "bad");
-  feedback.classList.remove("hidden");
   nextBtn.classList.remove("hidden");
 }
 
@@ -368,15 +439,98 @@ function finishSession(reason) {
   nextBtn.classList.add("hidden");
 
   qIndex.textContent = "Session Complete";
-  qModeTag.textContent = `${MODE_LABELS[mode]} | ${TRACK_LABELS[track]}`;
+  qModeTag.textContent = buildQuestionTag();
   qPrompt.textContent = `চমৎকার! ${reason}`;
-  qInstruction.textContent = "নতুন সেটের জন্য Start Session চাপো";
+  qInstruction.textContent = "নিচে Answer Sheet দেখো, তারপর নতুন সেট শুরু করো।";
 
   setFeedback(
     `<p><strong>এই সেশনের ফল:</strong> ${sessionScore.correct} / ${sessionScore.attempted}</p>`,
     "ok"
   );
   feedback.classList.remove("hidden");
+
+  renderAnswerSheet(reason);
+}
+
+function renderAnswerSheet(reason) {
+  const sessionAccuracy = sessionScore.attempted > 0
+    ? Math.round((sessionScore.correct / sessionScore.attempted) * 100)
+    : 0;
+
+  sheetSummary.textContent = `${buildQuestionTag()} | ${reason} | Score ${sessionScore.correct}/${sessionScore.attempted} | Accuracy ${sessionAccuracy}%`;
+
+  const recordMap = new Map(sessionRecords.map((item) => [item.questionId, item]));
+  sheetList.innerHTML = queue.map((question, index) => {
+    const record = recordMap.get(question.id);
+    const statusClass = !record ? "unanswered" : (record.correct ? "correct" : "wrong");
+    const statusText = !record ? "Not Answered" : (record.correct ? "Correct" : "Wrong");
+    const yourAnswer = formatUserAnswer(record);
+    const explanation = buildExplanation(question);
+
+    return [
+      `<article class="sheet-item ${statusClass}">`,
+      `<p><strong>Q${index + 1}.</strong> সমস্তপদ: ${question.word}</p>`,
+      `<p><strong>Status:</strong> ${statusText}</p>`,
+      `<p><strong>Your Answer:</strong> ${yourAnswer}</p>`,
+      `<p><strong>Correct Samas:</strong> ${question.category}</p>`,
+      `<p><strong>Correct Byasabakya:</strong> ${question.byasabakya}</p>`,
+      `<p><strong>Why This Is Correct:</strong> ${explanation}</p>`,
+      "</article>"
+    ].join("");
+  }).join("");
+
+  answerSheet.classList.remove("hidden");
+  answerSheet.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function formatUserAnswer(record) {
+  if (!record) {
+    return "No answer submitted";
+  }
+
+  if (record.byFlashMode) {
+    return record.userCategory || "Self-marked";
+  }
+
+  if (record.userCategory && record.userByas) {
+    return `সমাস: ${record.userCategory} | ব্যাসবাক্য: ${escapeHtml(record.userByas)}`;
+  }
+
+  if (record.userCategory) {
+    return `সমাস: ${record.userCategory}`;
+  }
+
+  if (record.userByas) {
+    return `ব্যাসবাক্য: ${escapeHtml(record.userByas)}`;
+  }
+
+  return "No answer submitted";
+}
+
+function recordSessionAnswer(details) {
+  const entry = {
+    questionId: activeQuestion.id,
+    word: activeQuestion.word,
+    correctCategory: activeQuestion.category,
+    correctByasabakya: activeQuestion.byasabakya,
+    correct: Boolean(details.correct),
+    userCategory: details.userCategory || "",
+    userByas: details.userByas || "",
+    byFlashMode: Boolean(details.byFlashMode),
+    mcq: Boolean(details.mcq)
+  };
+
+  const existingIndex = sessionRecords.findIndex((item) => item.questionId === activeQuestion.id);
+  if (existingIndex === -1) {
+    sessionRecords.push(entry);
+  } else {
+    sessionRecords[existingIndex] = entry;
+  }
+}
+
+function buildExplanation(question) {
+  const base = CATEGORY_EXPLANATIONS[question.category] || "ব্যাসবাক্য অনুযায়ী পদগঠনের নিয়মে এই সমাস নির্ধারিত হয়।";
+  return `${base} (${question.byasabakya})`;
 }
 
 function registerResult(correct) {
@@ -392,6 +546,7 @@ function registerResult(correct) {
   if (correct) {
     progress.correct += 1;
   }
+
   progress.bestStreak = Math.max(progress.bestStreak, progress.currentStreak);
   saveProgress(progress);
   updateProgressUi();
@@ -409,7 +564,14 @@ function updateProgressUi() {
 }
 
 function updateModeHeader() {
-  modeName.textContent = `${MODE_LABELS[mode]} • ${TRACK_LABELS[track]}`;
+  modeName.textContent = buildQuestionTag();
+}
+
+function buildQuestionTag() {
+  if (mode === "mcq") {
+    return `${MODE_LABELS[mode]} • Samas Only`;
+  }
+  return `${MODE_LABELS[mode]} • ${TRACK_LABELS[track]}`;
 }
 
 function getCheckedCategory() {
@@ -468,8 +630,13 @@ function resetSession() {
   queue = [];
   currentIndex = 0;
   activeQuestion = null;
+  questionLocked = false;
   sessionScore = { correct: 0, attempted: 0 };
+  sessionRecords = [];
   feedback.classList.add("hidden");
+  answerSheet.classList.add("hidden");
+  sheetList.innerHTML = "";
+  sheetSummary.textContent = "Session summary will appear here.";
 }
 
 function setFeedback(message, type) {
@@ -484,6 +651,7 @@ function loadProgress() {
     if (!raw) {
       return { correct: 0, attempted: 0, currentStreak: 0, bestStreak: 0 };
     }
+
     const parsed = JSON.parse(raw);
     return {
       correct: Number(parsed.correct) || 0,

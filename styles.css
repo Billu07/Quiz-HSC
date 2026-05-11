@@ -296,6 +296,62 @@ textarea:focus {
   background: var(--surface-soft);
 }
 
+.answer-sheet {
+  margin-top: 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  padding: 0.82rem;
+}
+
+.sheet-head h2 {
+  margin: 0;
+  font-size: 1.02rem;
+}
+
+.sheet-head p {
+  margin: 0.34rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.sheet-list {
+  margin-top: 0.72rem;
+  display: grid;
+  gap: 0.56rem;
+}
+
+.sheet-item {
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 0.62rem 0.66rem;
+  background: #fffefc;
+}
+
+.sheet-item p {
+  margin: 0 0 0.26rem;
+  font-size: 0.9rem;
+}
+
+.sheet-item p:last-child {
+  margin-bottom: 0;
+}
+
+.sheet-item.correct {
+  border-color: var(--ok-line);
+  background: var(--ok-bg);
+}
+
+.sheet-item.wrong {
+  border-color: var(--bad-line);
+  background: var(--bad-bg);
+}
+
+.sheet-item.unanswered {
+  border-color: #dacdb9;
+  background: #faf6ef;
+}
+
 .mode-grid {
   display: grid;
   gap: 0.54rem;
@@ -335,6 +391,12 @@ textarea:focus {
   gap: 0.56rem;
 }
 
+.controls select:disabled {
+  background: #f0ece4;
+  color: #857a6f;
+  cursor: not-allowed;
+}
+
 .start-btn {
   min-height: 42px;
 }
@@ -364,6 +426,10 @@ textarea:focus {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: end;
   }
+
+  .sheet-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (min-width: 920px) {
@@ -391,6 +457,10 @@ textarea:focus {
   }
 
   .controls {
+    grid-template-columns: 1fr;
+  }
+
+  .sheet-list {
     grid-template-columns: 1fr;
   }
 }

@@ -13,6 +13,10 @@ Simple static quiz app for practicing:
 - `Only Byasabakya`
 - `Only Samas Category`
 
+## Extra Modes
+- `MCQ Challenge` (4-option multiple choice on Samas category)
+- End-of-session `Answer Sheet` with per-question explanation
+
 ## Responsive Behavior
 - Mobile-first layout (small screens are default)
 - Quiz appears at the top (quiz-first layout)
